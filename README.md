@@ -1,4 +1,4 @@
-# DEEP (Extended Release)
+        # DEEP (Extended Release)
 
 DEEP is an open source intelligent web-based platform offering a suite of collaborative tools tailored towards humanitarian crisis responses. It includes common analysis workflows and frameworks for thinking using both structured and unstructured, quantitative and qualitative data.
 

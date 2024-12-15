@@ -1,57 +1,47 @@
+
 version: '3.2'
 
 
 x-server: &base_server_setup
   build:
     context: ./server/
-  # To attach to container with stdin `docker attach <container_name>`
-  # Used for python debugging.
   stdin_open: true
   tty: true
   environment: &base_server_environment
-    # To overwrite this values. set the values in .env
     DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
-    DEEP_ENVIRONMENT: ${DEEP_ENVIRONMENT:-development}
+    DEEP_ENVIRONMENT: ${DEEP_ENVIRONMENT:-prod}
     DEEP_FRONTEND_HOST: ${DEEP_FRONTEND_HOST:-localhost:3000}
     DEEP_FRONTEND_ARY_HOST: ${DEEP_FRONTEND_ARY_HOST:-localhost:3001}
-    DEEP_BACKEND_HOST: ${DEEP_BACKEND_HOST:-localhost:8000}
+    DEEP_BACKEND_HOST: ${DEEP_BACKEND_HOST:-localhost:8080}
     DJANGO_ALLOWED_HOST: ${DJANGO_ALLOWED_HOST:-localhost}
     SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-localhost}
     CSRF_COOKIE_DOMAIN: ${CSRF_COOKIE_DOMAIN:-localhost}
     EMAIL_FROM: ${EMAIL_FROM:-dev@thedeep.io}
-    # From db.environment
     DATABASE_NAME: ${DATABASE_NAME:-deep}
     DATABASE_USER: ${DATABASE_USER:-postgres}
     DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
     DATABASE_PORT: ${DATABASE_PORT:-5432}
     DATABASE_HOST: ${DATABASE_HOST:-db}
-    # From redis
     CELERY_REDIS_URL: ${CELERY_REDIS_URL:-redis://redis:6379/0}
     DJANGO_CACHE_REDIS_URL: ${DJANGO_CACHE_REDIS_URL:-redis://redis:6379/2}
     TEST_DJANGO_CACHE_REDIS_URL: ${TEST_DJANGO_CACHE_REDIS_URL:-redis://redis:6379/12}
-    # HID
     HID_CLIENT_ID: ${HID_CLIENT_ID:-deep-local}
     HID_CLIENT_REDIRECT_URL: ${HID_CLIENT_REDIRECT_URL:-http://localhost:3000/login/}
     HID_AUTH_URI: ${HID_AUTH_URI:-https://api2.dev.humanitarian.id}
-    # DEEPL Service
     DEEPL_SERVICE_DOMAIN: ${DEEPL_SERVICE_DOMAIN:-http://extractor:8001}
     DEEPL_SERVICE_CALLBACK_DOMAIN: ${DEEPL_SERVICE_CALLBACK_DOMAIN:-http://web:8000}
-    # DEEPL Server -> https://github.com/the-deep-nlp
-    DEEPL_SERVER_TOKEN: ${DEEPL_SERVER_TOKEN?err}
-    DEEPL_SERVER_DOMAIN: ${DEEPL_SERVER_DOMAIN?err}
-    DEEPL_SERVER_CALLBACK_DOMAIN: ${DEEPL_SERVER_CALLBACK_DOMAIN?err}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   env_file:
     - .env
-  extra_hosts:
-      - "host.docker.internal:host-gateway"
   volumes:
     - ./server/:/code
     - media:/media
-    - ipython_data_local:/root/.ipython/profile_default   # persist ipython data, including ipython history
+#    - ipython_data_local:/root/.ipython/profile_default
   depends_on:
-      - db
-      - redis
-      - extractor
+    - db
+    - redis
+#    - extractor
 
 x-client: &base_client_setup
   tty: true
@@ -68,7 +58,7 @@ x-client: &base_client_setup
     REACT_APP_ASSESSMENT_REGISTRY_END: ${REACT_APP_ASSESSMENT_REGISTRY_END:-http://localhost:3001}
     REACT_APP_GA_MEASUREMENT_ID: ${REACT_APP_GA_MEASUREMENT_ID:-}
   extra_hosts:
-      - "host.docker.internal:host-gateway"
+    - "host.docker.internal:host-gateway"
   env_file:
     - .env
   command: bash -c '/code/scripts/run_develop.sh'
@@ -88,6 +78,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - '5432:5432'
 
   redis:
     image: redis:6-alpine
@@ -111,6 +103,7 @@ services:
     command: bash -c 'wait-for-it $$DATABASE_HOST:$$DATABASE_PORT && /code/scripts/run_web.sh'
     ports:
       - '8000:8000'
+
 
   worker:
     <<: *base_server_setup
